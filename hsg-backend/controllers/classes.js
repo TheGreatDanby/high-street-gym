@@ -1,0 +1,666 @@
+import { Router } from "express";
+// import { validate } from "../middleware/validator.js"
+import xml2js from "xml2js"
+import { Classes, Session } from "../models/classes.js";
+import {
+    getAll,
+    getClassSessionsById,
+    addBooking,
+    getByID,
+    deleteBooking,
+    getAllBookings,
+    createClass,
+    updateClass,
+    deleteByID,
+    getBookingByID,
+    getBookingsByClassID,
+    updateBooking,
+    createBooking,
+    deleteBookingByID,
+    createClassXML,
+    updateSession,
+    getSessionByID,
+    createSession
+} from "../models/classes-mdb.js";
+
+
+
+
+const classesController = Router({ mergeParams: true });
+
+
+const getClassesListSchema = {
+    type: "object",
+    properties: {}
+}
+
+classesController.get(
+    "/classes",
+    // validate({ body: getClassesListSchema }),
+    (req, res) => {
+        // #swagger.summary = 'Get a all Classes'
+
+        getAll().then(classesObj => {
+
+            res.status(200).json({
+                status: 200,
+                message: "Get all classes",
+                classesObj: classesObj
+            })
+        }).catch(error => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to get all classes",
+            })
+        })
+    })
+
+classesController.get(
+    "/bookings",
+    (req, res) => {
+        // #swagger.summary = 'Get all Bookings'
+
+        getAllBookings().then(bookingsObj => {
+
+            res.status(200).json({
+                status: 200,
+                message: "Get all bookings",
+                bookingsObj: bookingsObj
+            })
+        }).catch(error => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to get all bookings",
+            })
+        })
+    })
+
+
+classesController.get("/classes/:classSessionId/booking", (req, res) => {
+    const classSessionId = req.params.classSessionId;
+
+    getClassSessionsById(classSessionId)
+        .then((classSession) => {
+            if (!classSession) {
+                res.status(404).json({
+                    status: 404,
+                    message: "Class not found",
+                });
+                return;
+            }
+            res.status(200).json({
+                status: 200,
+                message: "Get class sessions",
+                classSessionId: classSessionId,
+                sessions: classSession.bookings,
+            });
+        })
+        .catch((error) => {
+            console.error("Error fetching gym class sessions:", error);
+            res.status(500).json({
+                status: 500,
+                message: "Failed to get class sessions",
+            });
+        })
+});
+
+classesController.post("/classes/upload/xml",
+    // auth(["Admin", "Trainer"]),
+    (req, res) => {
+        if (req.files && req.files["xml-file"]) {
+            // Access the XML file as a string
+            const XMLFile = req.files["xml-file"]
+            const file_text = XMLFile.data.toString()
+            console.log(file_text);
+
+
+            // Set up XML parser
+            const parser = new xml2js.Parser();
+            parser.parseStringPromise(file_text)
+                .then(data => {
+                    const classUpload = data["classes-upload"]
+                    const classUploadAttributes = classUpload["$"]
+                    const operation = classUploadAttributes["operation"]
+                    // Slightly painful indexing to reach nested children
+                    const classesData = classUpload["classes"][0]["class"]
+
+                    if (operation == "insert") {
+                        Promise.all(classesData.map((classData) => {
+                            // Convert the xml object into a model object
+                            const classModel = Classes(null,
+                                classData.Name.toString(),
+                                classData.Description.toString(),
+                                classData.Duration.toString(),
+                                classData.Timeslot.toString(),
+                                classData.Location.toString())
+                            // Return the promise of each creation query
+                            return createClassXML(classModel)
+                        })).then(results => {
+                            res.status(200).json({
+                                status: 200,
+                                message: "XML Upload insert successful",
+                            })
+                        }).catch(error => {
+                            res.status(500).json({
+                                status: 500,
+                                message: "XML upload failed on database operation - " + error,
+                            })
+                        })
+                    } else if (operation == "update") {
+                        Promise.all(classesData.map((classData) => {
+                            // Convert the xml object into a model object
+                            const classModel = Classes(
+                                classData.id.toString(),
+                                classData.name.toString()
+                            )
+                            // Return the promise of each creation query
+                            return models.classModel.update(classModel)
+                        })).then(results => {
+                            res.status(200).json({
+                                status: 200,
+                                message: "XML Upload update successful",
+                            })
+                        }).catch(error => {
+                            res.status(500).json({
+                                status: 500,
+                                message: "XML upload failed on database operation - " + error,
+                            })
+                        })
+
+                    } else {
+                        res.status(400).json({
+                            status: 400,
+                            message: "XML Contains invalid operation attribute value",
+                        })
+                    }
+                })
+                .catch(error => {
+                    res.status(500).json({
+                        status: 500,
+                        message: "Error parsing XML - " + error,
+                    })
+                })
+
+
+        } else {
+            res.status(400).json({
+                status: 400,
+                message: "No file selected",
+            })
+        }
+    })
+
+
+classesController.post("/classes/:classSessionId/session", (req, res) => {
+
+
+    const classSessionId = req.params.classSessionId;
+    const { sessionDate, participant } = req.body;
+    const { userId, name } = participant;
+
+
+    addBooking(classSessionId, sessionDate, userId, name)
+
+        .then((newBooking) => {
+
+            if (!newBooking) {
+                res.status(404).json({
+                    status: 404,
+                    message: "Class session not found",
+                });
+                return;
+            }
+            res.status(201).json({
+                status: 201,
+                message: "Booking created",
+                booking: newBooking,
+            });
+        })
+        .catch((error) => {
+            console.error("Error adding booking:", error);
+            res.status(500).json({
+                status: 500,
+                message: "Failed to add booking",
+            });
+        });
+});
+
+classesController.delete("/booking/:bookingId/", (req, res) => {
+    const bookingId = req.params.bookingId;
+    const { loggedInUserId } = req.body;
+
+    deleteBookingByID(bookingId, loggedInUserId)
+        .then((updatedBooking) => {
+            if (!updatedBooking) {
+                res.status(404).json({
+                    status: 404,
+                    message: "Class session not found",
+                });
+                return;
+            }
+            res.status(200).json({
+                status: 200,
+                message: "Booking deleted",
+                booking: updatedBooking,
+            });
+        })
+        .catch((error) => {
+            console.error("Error deleting booking:", error);
+            res.status(500).json({
+                status: 500,
+                message: "Failed to delete booking",
+            });
+        });
+});
+
+
+
+
+
+const getClassesByIDSchema = {
+    type: "object",
+    properties: {
+        id: {
+            type: "string",
+            // pattern: "^[0-9]+$",
+            // minLength: 1,
+            // maxLength: 4,
+        }
+    }
+}
+
+classesController.get(
+    "/classes/:id",
+    // validate({ params: getClassesByIDSchema }),
+    (req, res) => {
+        const classesID = req.params.id
+
+        getByID(classesID).then(classes => {
+            console.log("🚀 ~ file: classes.js:121 ~ getByID ~ classes:", classes);
+
+            res.status(200).json({
+                status: 200,
+                message: "Get classes by ID",
+                classes: classes
+            })
+        }).catch(error => {
+            console.error("Error fetching class by ID:", error);
+
+            res.status(500).json({
+                status: 500,
+                message: `Failed to get classes by ID. Error: ${error.message}`,
+            })
+        })
+
+    })
+
+classesController.get(
+    "/bookings/:id",
+    // validate({ params: getBookingsByIDSchema }),
+    (req, res) => {
+        const bookingID = req.params.id
+
+        getBookingByID(bookingID).then(booking => {
+            console.log("🚀 ~ file: bookings.js:121 ~ getBookingByID ~ booking:", booking);
+
+            res.status(200).json({
+                status: 200,
+                message: "Get booking by ID",
+                booking: booking
+            })
+        }).catch(error => {
+            console.error("Error fetching booking by ID:", error);
+
+            res.status(500).json({
+                status: 500,
+                message: `Failed to get booking by ID. Error: ${error.message}`,
+            })
+        })
+    })
+
+classesController.get(
+    "/session/:id",
+    // validate({ params: getBookingsByIDSchema }),
+    (req, res) => {
+        const sessionID = req.params.id
+        console.log("🚀 ~ file: classes.js:325 ~ sessionID:", sessionID)
+
+        getSessionByID(sessionID).then(session => {
+
+            res.status(200).json({
+                status: 200,
+                message: "Get Session by ID",
+                session: session
+            })
+        }).catch(error => {
+            console.error("Error fetching session by ID:", error);
+
+            res.status(500).json({
+                status: 500,
+                message: `Failed to get session by ID. Error: ${error.message}`,
+            })
+        })
+    })
+
+classesController.get("/bookings/class/:classId", (req, res) => {
+    const classId = req.params.classId;
+
+    getBookingsByClassID(classId)
+        .then(bookings => {
+            res.status(200).json({
+                status: 200,
+                message: "Get bookings by class ID",
+                bookings: bookings
+            })
+        })
+        .catch(error => {
+            console.error("Error fetching bookings by class ID:", error);
+            res.status(500).json({
+                status: 500,
+                message: `Failed to get bookings by class ID. Error: ${error.message}`,
+            });
+        });
+});
+
+
+
+const createClassesSchema = {
+    type: "object",
+    // TODO: fix validation error 
+    required: ["name", "species"],
+    properties: {
+        name: {
+            type: "string"
+        },
+        species: {
+            type: "string"
+        }
+    }
+}
+
+classesController.post(
+    "/classes",
+    // validate({ body: createClassesSchema }),
+    (req, res) => {
+
+        const classesData = req.body
+        const classes = Classes(
+            null,
+            classesData.Name,
+            classesData.Description,
+            classesData.Duration,
+            classesData.Timeslot,
+            classesData.Location,
+        )
+
+        createClass(classes).then(classes => {
+            res.status(200).json({
+                status: 200,
+                message: "Created classes ",
+                classes: classes,
+            })
+        }).catch(error => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to created classes ",
+            })
+        })
+
+    })
+
+classesController.post(
+    "/session",
+    (req, res) => {
+
+        const sessionData = req.body
+
+        const session = {
+            // id: null,
+            classSessionId: sessionData.classSessionId,
+            sessionDate: sessionData.sessionDate,
+            participants: sessionData.participants || [],
+            Trainer: sessionData.Trainer
+        }
+
+
+        createSession(session).then(session => {
+            res.status(200).json({
+                status: 200,
+                message: "Created session ",
+                session: session,
+            })
+        }).catch(error => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to created session ",
+            })
+        })
+
+    })
+
+classesController.post("/booking", (req, res) => {
+    const bookingData = req.body;
+
+    updateBooking(bookingData)
+        .then((booking) => {
+            res.status(200).json({
+                status: 200,
+                message: "Updated booking",
+                booking: booking,
+            });
+        })
+        .catch((error) => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to update booking",
+                error: error.message,
+            });
+        });
+});
+
+// classesController.post("/session", (req, res) => {
+//     const sessionData = req.body;
+
+//     updateSession(sessionData)
+//         .then((session) => {
+//             res.status(200).json({
+//                 status: 200,
+//                 message: "Updated session",
+//                 session: session,
+//             });
+//         })
+//         .catch((error) => {
+//             res.status(500).json({
+//                 status: 500,
+//                 message: "Failed to update session",
+//                 error: error.message,
+//             });
+//         });
+// });
+
+classesController.delete("/booking", (req, res) => {
+    const bookingData = req.body;
+
+    deleteBooking(bookingData)
+        .then((booking) => {
+            res.status(200).json({
+                status: 200,
+                message: "Cancelled booking",
+                booking: booking,
+            });
+        })
+        .catch((error) => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to cancel booking",
+                error: error.message,
+            });
+        });
+});
+
+
+
+
+const updateClassesSchema = {
+    type: "object",
+    required: ["id"],
+    properties: {
+        id: {
+            type: "string",
+        },
+        name: {
+            type: "string",
+        },
+        species: {
+            type: "string"
+        }
+    }
+}
+
+// classesController.patch(
+//     "/classes/:id",
+//     (req, res) => {
+//         const classId = req.params.id;
+//         const classData = req.body;
+//         console.log("Controller classData:", classData);
+//         if (classId == null) {
+//             res.status(404).json({
+//                 status: 404,
+//                 message: "Cannot find classes  to update without ID"
+//             })
+//             return
+//         }
+//         updateClass(classId, classData)
+//             .then(updatedClass => {
+//                 res.status(200).json({
+//                     status: 200,
+//                     message: "Classes updated",
+//                     classes: updatedClass
+//                 })
+//             })
+//             .catch(error => {
+//                 res.status(500).json({
+//                     status: 500,
+//                     message: "Failed to update classes. Error: " + error.message
+//                 })
+//             })
+//     })
+
+classesController.patch(
+    "/classes",
+    // validate({ body: patchUpdateUserSchema }),
+    (req, res) => {
+        // Get user data out of the request
+        const classesData = req.body
+        console.log("🚀 ~ file: classes.js:507 ~ classesData:", classesData)
+
+
+        // Convert the user data into a User model object
+        const classes = Classes(
+            classesData.id,
+            classesData.Name,
+            classesData.Description,
+            classesData.Duration,
+            classesData.Timeslot,
+            classesData.Location
+        )
+
+        // Use the update model function to update this user in the DB
+        updateClass(classes).then(classes => {
+            res.status(200).json({
+                status: 200,
+                message: "Updated Class",
+                classes: classes
+            })
+        }).catch(error => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to update Class"
+            })
+        })
+
+
+    }
+)
+
+classesController.patch(
+    "/session",
+    // validate({ body: patchUpdateUserSchema }),
+    (req, res) => {
+        // Get user data out of the request
+        const sessionData = req.body
+        console.log("🚀 ~ file: classes.js:565 ~ sessionData:", sessionData)
+
+        const session = {
+            id: sessionData._id,
+            sessionDate: sessionData.sessionDate,
+            Trainer: sessionData.Trainer,
+        };
+
+        // Use the update model function to update this user in the DB
+        updateSession(session).then(session => {
+            console.log("🚀 ~ file: classes.js:575 ~ updateSession ~ session:", session)
+            res.status(200).json({
+                status: 200,
+                message: "Updated session",
+                session: session
+            })
+        }).catch(error => {
+            res.status(500).json({
+                status: 500,
+                message: "Failed to update session"
+            })
+        })
+
+
+    }
+)
+// NOT IN USE
+// classesController.patch(
+//     "/booking/:id",
+//     (req, res) => {
+//         const bookingId = req.params.id;
+//         const bookingData = req.body;
+//         if (bookingId == null) {
+//             res.status(404).json({
+//                 status: 404,
+//                 message: "Cannot find booking to update without ID"
+//             })
+//             return
+//         }
+//         updateBooking(bookingId, bookingData)
+//             .then(updatedBooking => {
+//                 res.status(200).json({
+//                     status: 200,
+//                     message: "Booking updated",
+//                     booking: updatedBooking
+//                 })
+//             })
+//             .catch(error => {
+//                 res.status(500).json({
+//                     status: 500,
+//                     message: "Failed to update classes "
+//                 })
+//             })
+//     })
+
+
+classesController.delete("/classes/:id",
+    (req, res) => {
+        const classesID = req.params.id;
+        deleteByID(classesID)
+            .then(result => {
+                res.status(200).json({
+                    status: 200,
+                    message: "Deleted classes by ID"
+                })
+            })
+            .catch(error => {
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to delete classes by ID"
+                })
+            })
+    })
+
+export default classesController

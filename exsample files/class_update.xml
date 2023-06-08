@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE classes-upload [
+    <!ELEMENT classes-upload (classes)>
+    <!ATTLIST classes-upload operation (insert|update) "insert">
+    <!ELEMENT classes (class+)>
+    <!ELEMENT class (id+, name?, description?, duration?, dates?, timeslot?, location?, trainers? )>
+    <!ELEMENT id (#PCDATA)>
+    <!ELEMENT name (#PCDATA)>
+    <!ELEMENT description (#PCDATA)>
+    <!ELEMENT duration (#PCDATA)>
+    <!ELEMENT dates (#PCDATA)>
+    <!ELEMENT timeslot (#PCDATA)>
+    <!ELEMENT location (building?, room?)>
+    <!ELEMENT building (#PCDATA)>
+    <!ELEMENT room (#PCDATA)>
+    <!ELEMENT trainers (trainer?)>
+    <!ELEMENT trainer (#PCDATA)>
+]>
+
+<classes-upload operation="update">
+    <classes>
+        <class>
+            <id>1</id>
+            <name></name>
+            <description></description>
+            <duration></duration>
+            <dates></dates>
+            <timeslot></timeslot>
+            <location>
+                <building></building>
+                <room></room>
+            </location>
+            <trainers>
+                <trainer></trainer>
+            </trainers>
+        </class>
+            </classes>
+</classes-upload>
+
