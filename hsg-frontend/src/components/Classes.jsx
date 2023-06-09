@@ -7,11 +7,11 @@ import Select from "react-select";
 export default function Classes() {
   const [classes, setClasses] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [currentSession, setCurrentSession] = useState(null);
+  // const [currentSession, setCurrentSession] = useState(null);
   const [authenticatedUser, login, logout] = useAuthentication();
   const [currentClass, setCurrentClass] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
-  const [currentSessionDate, setCurrentSessionDate] = useState(null);
+  // const [currentSessionDate, setCurrentSessionDate] = useState(null);
   const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
@@ -60,28 +60,6 @@ export default function Classes() {
     );
   }
 
-  // function handleBookingUpdate(classId, sessionId, updatedClass) {
-  //   setClasses((prevClasses) =>
-  //     prevClasses.map((classObj) => {
-  //       if (classObj._id === classId) {
-  //         return {
-  //           ...classObj,
-  //           bookings: {
-  //             ...classObj.bookings,
-  //             bookings: classObj.bookings.bookings.map((session) => {
-  //               if (session.id === updatedClass._id) {
-  //                 return updatedClass;
-  //               }
-  //               return session;
-  //             }),
-  //           },
-  //         };
-  //       }
-  //       return classObj;
-  //     })
-  //   );
-  // }
-
   function sessionBooking(classSessionId, sessionDate, classObj) {
     const participant = {
       userId: authenticatedUser.id,
@@ -126,34 +104,6 @@ export default function Classes() {
     setSelectedSession(option.value);
   }
 
-  // const cancelBooking = async (classSessionId, currentSessionDate) => {
-  //   if (window.confirm("Are you sure you want to delete this booking?")) {
-  //     console.log(
-  //       "🚀 ~ file: Classes.jsx:106 ~ cancelBooking ~ classSessionId:",
-  //       classSessionId,
-  //       "authenticatedUser.id:",
-  //       authenticatedUser.id
-  //     );
-  //     try {
-  //       await deleteBooking(
-  //         classSessionId,
-  //         currentSessionDate,
-  //         authenticatedUser.id
-  //       );
-  //       console.log(
-  //         "🚀 ~ file: Classes.jsx:112 ~ cancelBooking ~ classSessionId:",
-  //         classSessionId
-  //       );
-  //       const updatedSessions = sessions.filter(
-  //         (session) => session.classSessionId !== classSessionId
-  //       );
-  //       setSessions(updatedSessions);
-  //     } catch (error) {
-  //       console.error("Error cancelling booking:", error);
-  //     }
-  //   }
-  // };
-
   const cancelBooking = async (classSessionId, currentSessionDate) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
       const bookingData = {
@@ -186,7 +136,7 @@ export default function Classes() {
       {classes.map((classObj) => (
         <div key={classObj.Name} id={classObj.Name} className="classes">
           <div
-            className="card lg:card-side bg-info shadow-xl m-5"
+            className="card lg:card-side bg-info shadow-xl mt-10 md:mt-0 md:mb-10 "
             key={classObj.ID}
           >
             <figure>
@@ -204,9 +154,7 @@ export default function Classes() {
             <div className="card-body ">
               <h2 className="card-title text-white">{classObj.Name}</h2>
 
-              <p className="text-white" style={{ width: "400px" }}>
-                {classObj.Description}
-              </p>
+              <p className="text-white md:w-96">{classObj.Description}</p>
               <div className="bg-primary rounded-md text-white text-center ">
                 {classObj.bookings.bookings.map((sessionObj, index) => {
                   console.log("Current session:", sessionObj);

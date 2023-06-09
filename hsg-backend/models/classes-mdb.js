@@ -72,6 +72,11 @@ export async function getAllBookings() {
     return bookings;
 }
 
+export async function getAllSessions() {
+    const sessions = await db.collection('Bookings').find({}).toArray();
+    return sessions;
+}
+
 
 export async function getClassSessionsById(classSessionId) {
     const classSession = await db.collection("Classes").findOne({ _id: new ObjectId(classSessionId) });
@@ -216,6 +221,23 @@ export async function getBookingsByClassID(classId) {
     }
 }
 
+export async function getSessionsByClassID(classId) {
+    let sessionResults = await db.collection("Bookings").find({ classSessionId: new ObjectId(classId) }).toArray();
+
+    if (sessionResults !== null && sessionResults.length > 0) {
+        return sessionResults.map(sessionResult => {
+            return {
+                _id: sessionResult._id.toString(),
+                sessionDate: sessionResult.sessionDate,
+                participants: sessionResult.participants,
+                Trainer: sessionResult.Trainer
+            };
+        });
+    } else {
+        throw new Error("no matching result found");
+    }
+}
+
 
 export async function getBookingByID(bookingID) {
     let bookingResult = await db.collection("Bookings").findOne({ _id: new ObjectId(bookingID) })
@@ -270,19 +292,22 @@ export async function getSessionByID(sessionID) {
 // }
 
 export async function updateClass(classes) {
-    console.log("🚀 ~ file: classes-mdb.js:238 ~ updateClass ~ classes:", classes)
     const classesID = new ObjectId(classes.id)
-    console.log("🚀 ~ file: classes-mdb.js:240 ~ updateClass ~ classesID:", classesID)
     delete classes.id
     const classesUpdateDocument = {
         "$set": classes
     }
-    console.log("🚀 ~ file: classes-mdb.js:244 ~ updateClass ~ classesUpdateDocument.$set:", classesUpdateDocument.classes)
     return db.collection("Classes").updateOne({ _id: classesID }, classesUpdateDocument)
+}
+export async function updateClassXML(classes) {
+    const className = classes.Name;
+    const classesUpdateDocument = {
+        "$set": classes
+    }
+    return db.collection("Classes").updateOne({ Name: className }, classesUpdateDocument)
 }
 
 export async function updateSession(session) {
-    console.log("🚀 ~ file: classes-mdb.js:250 ~ updateSession ~ session:", session)
     const sessionID = new ObjectId(session.id)
     delete session.id
     const sessionUpdateDocument = {
@@ -368,8 +393,12 @@ export async function deleteBooking(bookingData) {
 }
 
 
-export async function deleteByID(classesID) {
+export async function deleteClassByID(classesID) {
     return db.collection("Classes").deleteOne({ _id: new ObjectId(classesID) })
+}
+
+export async function deleteSessionByID(classesID) {
+    return db.collection("Bookings").deleteOne({ _id: new ObjectId(classesID) })
 }
 
 export async function deleteBookingByID(bookingID) {

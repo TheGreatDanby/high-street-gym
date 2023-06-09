@@ -34,7 +34,7 @@ function Login() {
       });
   }
   return (
-    <section className="flex justify-center ">
+    <section className="flex justify-center mt-20">
       <form className="" onSubmit={onLoginSubmit}>
         <div className="">
           <label className="label">

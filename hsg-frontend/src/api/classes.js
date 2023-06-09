@@ -4,7 +4,10 @@ export async function getAllClasses() {
     const response = await fetch(
         API_URL + "/classes",
         {
-            method: "GET"
+            method: "GET",
+            headers: {
+                'Content-Type': "application/json"
+            },
         }
     );
     const getClassesResponse = await response.json()
@@ -169,6 +172,20 @@ export async function deleteClasses(classID) {
     return deleteClassesResponse
 }
 
+export async function deleteSession(sessionID) {
+    const response = await fetch(
+        API_URL + "/session/" + sessionID,
+        {
+            method: "DELETE",
+            headers: {
+                'Content-Type': "application/json"
+            },
+        }
+    )
+    const deleteSessionResponse = await response.json()
+    return deleteSessionResponse
+}
+
 export async function getBookingByID(bookingID) {
     const response = await fetch(
         API_URL + "/bookings/" + bookingID,
@@ -208,6 +225,20 @@ export async function getBookingsByClassID(classSessionId) {
     );
     const getBookingByClassIDResponse = await response.json()
     return getBookingByClassIDResponse.bookings;  // Assuming the response contains an array of bookings.
+}
+
+export async function getSessionsByClassID(classSessionId) {
+    const response = await fetch(
+        API_URL + "/sessions/class/" + classSessionId,
+        {
+            method: "GET",
+            headers: {
+                'Content-Type': "application/json"
+            },
+        }
+    );
+    const getSessionByClassIDResponse = await response.json()
+    return getSessionByClassIDResponse.sessions;
 }
 
 
@@ -332,6 +363,17 @@ export async function getAllBookings() {
     );
     const getBookingsResponse = await response.json();
     return getBookingsResponse.bookingsObj;
+}
+
+export async function getAllSessions() {
+    const response = await fetch(
+        API_URL + "/sessions",
+        {
+            method: "GET"
+        }
+    );
+    const getSessionsResponse = await response.json();
+    return getSessionsResponse.bookingsObj;
 }
 
 

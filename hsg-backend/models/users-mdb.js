@@ -108,6 +108,14 @@ export async function update(user) {
     // Run the update query and return the resulting promise
     return db.collection("users").updateOne({ _id: userID }, userUpdateDocument)
 }
+export async function updateUserXML(user) {
+    const userEmail = user.email;
+
+    const userUpdateDocument = {
+        "$set": user
+    }
+    return db.collection("users").updateOne({ email: userEmail }, userUpdateDocument)
+}
 
 export async function createUserXML(user) {
     // delete classes.id

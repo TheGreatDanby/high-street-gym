@@ -34,7 +34,7 @@ export default function ClassesCRUD() {
     getAllSessions().then((sessions) => {
       setSessions(sessions);
     });
-  }, [selectedClassesID]);
+  }, [selectedSessionID]);
 
   useEffect(() => {
     if (selectedClassesID) {
@@ -136,8 +136,8 @@ export default function ClassesCRUD() {
     if (selectedSessionID) {
       // Update
       updateSession(selectedSession).then((updatedSession) => {
-        getAllSessions().then((newSessions) => {
-          setSessions(newSessions);
+        getAllSessions().then((sessions) => {
+          setSessions(sessions);
         });
         console.log(
           "🚀 ~ file: ClassesCRUD.jsx:125 ~ updateSession ~ selectedSession:",
@@ -163,7 +163,7 @@ export default function ClassesCRUD() {
         Trainer: selectedSession.Trainer,
       })
         .then((SessionDetails) => {
-          getAllSessions().then((newSessions) => setSessions(newSessions));
+          // getAllSessions().then((sessions) => setSessions(sessions));
         })
         .catch((error) => {
           console.error("Error in create Session:", error);
@@ -210,9 +210,9 @@ export default function ClassesCRUD() {
 
   return (
     // <div className="container mx-auto grid md:grid-cols-2 grid-cols-1 gap-4">
-    <div className="container mx-auto grid md:grid-cols-2 grid-cols-1 gap-2 mt-10 md:mt-0">
+    <div className="md:grid grid-cols-1 md:grid-cols-2 gap-4 mt-10 md:mt-0">
       {/* Classes list */}
-      <div className="overflow-x-auto overflow-scroll row-start-2 md:row-auto ">
+      <div className="overflow-x-auto max-h-96 overflow-scroll p-2 ">
         <table className="table table-compact w-full">
           <thead>
             <tr>
@@ -220,19 +220,11 @@ export default function ClassesCRUD() {
               <th className="sticky top-0 left-0 bg-primary rounded-l ">
                 {/* Edit */}
               </th>
-              <th className="sticky top-0 bg-primary rounded-r md:rounded-r-none">
-                Name
-              </th>
+              <th className="sticky top-0 bg-primary">Name</th>
               {/* <th className="sticky top-0 bg-primary">Description</th> */}
-              <th className="sticky top-0 bg-primary hidden md:table-cell">
-                Duration
-              </th>
-              <th className="sticky top-0 bg-primary hidden md:table-cell">
-                Timeslot
-              </th>
-              <th className="sticky top-0 bg-primary hidden md:table-cell rounded-r">
-                Location
-              </th>
+              <th className="sticky top-0 bg-primary">Duration</th>
+              <th className="sticky top-0 bg-primary">Timeslot</th>
+              <th className="sticky top-0 bg-primary rounded-r">Location</th>
             </tr>
           </thead>
           <tbody>
@@ -258,15 +250,9 @@ export default function ClassesCRUD() {
                     {/* <td className="bg-secondary max-w-xs truncate">
                       {classObj.Description}
                     </td> */}
-                    <td className="hidden md:table-cell">
-                      {classObj.Duration + " Min."}
-                    </td>
-                    <td className="hidden md:table-cell">
-                      {classObj.Timeslot}
-                    </td>
-                    <td className="hidden md:table-cell">
-                      {classObj.Location}
-                    </td>
+                    <td>{classObj.Duration + " Min."}</td>
+                    <td>{classObj.Timeslot}</td>
+                    <td>{classObj.Location}</td>
                   </tr>
                 );
               })
@@ -388,7 +374,7 @@ export default function ClassesCRUD() {
       </div>
 
       <div>
-        <h2 className=" font-bold	text-2xl md:text-3xl	text-center	p-3 bg-info rounded mb-2 row-start-4 md:row-auto">
+        <h2 className=" font-bold	text-3xl	text-center	p-3 bg-info rounded mb-2">
           Available Session for {selectedClassName}
         </h2>
 
@@ -425,9 +411,7 @@ export default function ClassesCRUD() {
                     <td>{bookingObj.Trainer}</td>
                     <td>
                       <select>
-                        <option selected disabled>
-                          Bookings
-                        </option>
+                        <option>Bookings</option>
                         {bookingObj.participants.map((participant, index) => (
                           <option key={index} value={participant.name}>
                             {participant.name}
@@ -448,7 +432,7 @@ export default function ClassesCRUD() {
           </tbody>
         </table>
       </div>
-      <div className="p-2 row-start-5 md:row-auto ">
+      <div className="p-2 ">
         <div className="form-control">
           <label className="label">
             <span className="label-text">Date</span>

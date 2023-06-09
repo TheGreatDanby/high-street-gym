@@ -1,6 +1,7 @@
 import { Router } from "express";
 // import { validate } from "../middleware/validator.js"
 import xml2js from "xml2js"
+// import auth from "../middleware/auth.js";
 import { Classes, Session } from "../models/classes.js";
 import {
     getAll,
@@ -11,7 +12,7 @@ import {
     getAllBookings,
     createClass,
     updateClass,
-    deleteByID,
+    deleteClassByID,
     getBookingByID,
     getBookingsByClassID,
     updateBooking,
@@ -20,7 +21,11 @@ import {
     createClassXML,
     updateSession,
     getSessionByID,
-    createSession
+    createSession,
+    deleteSessionByID,
+    getAllSessions,
+    getSessionsByClassID,
+    updateClassXML
 } from "../models/classes-mdb.js";
 
 
@@ -36,6 +41,8 @@ const getClassesListSchema = {
 
 classesController.get(
     "/classes",
+    // auth(["Admin", "Trainer", "Member"]),
+
     // validate({ body: getClassesListSchema }),
     (req, res) => {
         // #swagger.summary = 'Get a all Classes'
@@ -57,6 +64,8 @@ classesController.get(
 
 classesController.get(
     "/bookings",
+    // auth(["Admin", "Trainer", "Member"]),
+
     (req, res) => {
         // #swagger.summary = 'Get all Bookings'
 
@@ -75,34 +84,59 @@ classesController.get(
         })
     })
 
+classesController.get(
+    "/sessions",
+    // auth(["Admin", "Trainer", "Member"]),
 
-classesController.get("/classes/:classSessionId/booking", (req, res) => {
-    const classSessionId = req.params.classSessionId;
+    (req, res) => {
+        // #swagger.summary = 'Get all Sessions'
 
-    getClassSessionsById(classSessionId)
-        .then((classSession) => {
-            if (!classSession) {
-                res.status(404).json({
-                    status: 404,
-                    message: "Class not found",
-                });
-                return;
-            }
+        getAllSessions().then(sessionsObj => {
+
             res.status(200).json({
                 status: 200,
-                message: "Get class sessions",
-                classSessionId: classSessionId,
-                sessions: classSession.bookings,
-            });
-        })
-        .catch((error) => {
-            console.error("Error fetching gym class sessions:", error);
+                message: "Get all sessions",
+                sessionsObj: sessionsObj
+            })
+        }).catch(error => {
             res.status(500).json({
                 status: 500,
-                message: "Failed to get class sessions",
-            });
+                message: "Failed to get all sessions",
+            })
         })
-});
+    })
+
+
+classesController.get("/classes/:classSessionId/booking",
+    // auth(["Admin", "Trainer", "Member"]),
+
+    (req, res) => {
+        const classSessionId = req.params.classSessionId;
+
+        getClassSessionsById(classSessionId)
+            .then((classSession) => {
+                if (!classSession) {
+                    res.status(404).json({
+                        status: 404,
+                        message: "Class not found",
+                    });
+                    return;
+                }
+                res.status(200).json({
+                    status: 200,
+                    message: "Get class sessions",
+                    classSessionId: classSessionId,
+                    sessions: classSession.bookings,
+                });
+            })
+            .catch((error) => {
+                console.error("Error fetching gym class sessions:", error);
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to get class sessions",
+                });
+            })
+    });
 
 classesController.post("/classes/upload/xml",
     // auth(["Admin", "Trainer"]),
@@ -149,12 +183,14 @@ classesController.post("/classes/upload/xml",
                     } else if (operation == "update") {
                         Promise.all(classesData.map((classData) => {
                             // Convert the xml object into a model object
-                            const classModel = Classes(
-                                classData.id.toString(),
-                                classData.name.toString()
-                            )
+                            const classModel = Classes(null,
+                                classData.Name.toString(),
+                                classData.Description.toString(),
+                                classData.Duration.toString(),
+                                classData.Timeslot.toString(),
+                                classData.Location.toString())
                             // Return the promise of each creation query
-                            return models.classModel.update(classModel)
+                            return updateClassXML(classModel)
                         })).then(results => {
                             res.status(200).json({
                                 status: 200,
@@ -191,67 +227,74 @@ classesController.post("/classes/upload/xml",
     })
 
 
-classesController.post("/classes/:classSessionId/session", (req, res) => {
+classesController.post("/classes/:classSessionId/session",
+    // auth(["Admin", "Trainer", "Member"]),
+
+    (req, res) => {
 
 
-    const classSessionId = req.params.classSessionId;
-    const { sessionDate, participant } = req.body;
-    const { userId, name } = participant;
+
+        const classSessionId = req.params.classSessionId;
+        const { sessionDate, participant } = req.body;
+        const { userId, name } = participant;
 
 
-    addBooking(classSessionId, sessionDate, userId, name)
+        addBooking(classSessionId, sessionDate, userId, name)
 
-        .then((newBooking) => {
+            .then((newBooking) => {
 
-            if (!newBooking) {
-                res.status(404).json({
-                    status: 404,
-                    message: "Class session not found",
+                if (!newBooking) {
+                    res.status(404).json({
+                        status: 404,
+                        message: "Class session not found",
+                    });
+                    return;
+                }
+                res.status(201).json({
+                    status: 201,
+                    message: "Booking created",
+                    booking: newBooking,
                 });
-                return;
-            }
-            res.status(201).json({
-                status: 201,
-                message: "Booking created",
-                booking: newBooking,
-            });
-        })
-        .catch((error) => {
-            console.error("Error adding booking:", error);
-            res.status(500).json({
-                status: 500,
-                message: "Failed to add booking",
-            });
-        });
-});
-
-classesController.delete("/booking/:bookingId/", (req, res) => {
-    const bookingId = req.params.bookingId;
-    const { loggedInUserId } = req.body;
-
-    deleteBookingByID(bookingId, loggedInUserId)
-        .then((updatedBooking) => {
-            if (!updatedBooking) {
-                res.status(404).json({
-                    status: 404,
-                    message: "Class session not found",
+            })
+            .catch((error) => {
+                console.error("Error adding booking:", error);
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to add booking",
                 });
-                return;
-            }
-            res.status(200).json({
-                status: 200,
-                message: "Booking deleted",
-                booking: updatedBooking,
             });
-        })
-        .catch((error) => {
-            console.error("Error deleting booking:", error);
-            res.status(500).json({
-                status: 500,
-                message: "Failed to delete booking",
+    });
+
+classesController.delete("/booking/:bookingId/",
+    // auth(["Admin", "Trainer", "Member"]),
+
+    (req, res) => {
+        const bookingId = req.params.bookingId;
+        const { loggedInUserId } = req.body;
+
+        deleteBookingByID(bookingId, loggedInUserId)
+            .then((updatedBooking) => {
+                if (!updatedBooking) {
+                    res.status(404).json({
+                        status: 404,
+                        message: "Class session not found",
+                    });
+                    return;
+                }
+                res.status(200).json({
+                    status: 200,
+                    message: "Booking deleted",
+                    booking: updatedBooking,
+                });
+            })
+            .catch((error) => {
+                console.error("Error deleting booking:", error);
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to delete booking",
+                });
             });
-        });
-});
+    });
 
 
 
@@ -271,6 +314,8 @@ const getClassesByIDSchema = {
 
 classesController.get(
     "/classes/:id",
+    // auth(["Admin", "Trainer", "Member"]),
+
     // validate({ params: getClassesByIDSchema }),
     (req, res) => {
         const classesID = req.params.id
@@ -296,6 +341,8 @@ classesController.get(
 
 classesController.get(
     "/bookings/:id",
+    // auth(["Admin", "Trainer", "Member"]),
+
     // validate({ params: getBookingsByIDSchema }),
     (req, res) => {
         const bookingID = req.params.id
@@ -320,6 +367,8 @@ classesController.get(
 
 classesController.get(
     "/session/:id",
+    // auth(["Admin", "Trainer", "Member"]),
+
     // validate({ params: getBookingsByIDSchema }),
     (req, res) => {
         const sessionID = req.params.id
@@ -342,25 +391,52 @@ classesController.get(
         })
     })
 
-classesController.get("/bookings/class/:classId", (req, res) => {
-    const classId = req.params.classId;
+classesController.get(
+    "/bookings/class/:classId",
+    // auth(["Admin", "Trainer", "Member"]),
+    (req, res) => {
+        const classId = req.params.classId;
 
-    getBookingsByClassID(classId)
-        .then(bookings => {
-            res.status(200).json({
-                status: 200,
-                message: "Get bookings by class ID",
-                bookings: bookings
+        getBookingsByClassID(classId)
+            .then(bookings => {
+                res.status(200).json({
+                    status: 200,
+                    message: "Get bookings by class ID",
+                    bookings: bookings
+                })
             })
-        })
-        .catch(error => {
-            console.error("Error fetching bookings by class ID:", error);
-            res.status(500).json({
-                status: 500,
-                message: `Failed to get bookings by class ID. Error: ${error.message}`,
+            .catch(error => {
+                console.error("Error fetching bookings by class ID:", error);
+                res.status(500).json({
+                    status: 500,
+                    message: `Failed to get bookings by class ID. Error: ${error.message}`,
+                });
             });
-        });
-});
+    });
+
+classesController.get(
+    "/sessions/class/:classId",
+    // auth(["Admin", "Trainer", "Member"]),
+
+    (req, res) => {
+        const classId = req.params.classId;
+
+        getSessionsByClassID(classId)
+            .then(sessions => {
+                res.status(200).json({
+                    status: 200,
+                    message: "Get sessions by class ID",
+                    sessions: sessions
+                })
+            })
+            .catch(error => {
+                console.error("Error fetching sessions by class ID:", error);
+                res.status(500).json({
+                    status: 500,
+                    message: `Failed to get sessions by class ID. Error: ${error.message}`,
+                });
+            });
+    });
 
 
 
@@ -380,6 +456,8 @@ const createClassesSchema = {
 
 classesController.post(
     "/classes",
+    // auth(["Admin", "Trainer"]),
+
     // validate({ body: createClassesSchema }),
     (req, res) => {
 
@@ -410,6 +488,8 @@ classesController.post(
 
 classesController.post(
     "/session",
+    // auth(["Admin", "Trainer"]),
+
     (req, res) => {
 
         const sessionData = req.body
@@ -438,25 +518,28 @@ classesController.post(
 
     })
 
-classesController.post("/booking", (req, res) => {
-    const bookingData = req.body;
+classesController.post("/booking",
+    // auth(["Admin", "Trainer", "Member"]),
 
-    updateBooking(bookingData)
-        .then((booking) => {
-            res.status(200).json({
-                status: 200,
-                message: "Updated booking",
-                booking: booking,
+    (req, res) => {
+        const bookingData = req.body;
+
+        updateBooking(bookingData)
+            .then((booking) => {
+                res.status(200).json({
+                    status: 200,
+                    message: "Updated booking",
+                    booking: booking,
+                });
+            })
+            .catch((error) => {
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to update booking",
+                    error: error.message,
+                });
             });
-        })
-        .catch((error) => {
-            res.status(500).json({
-                status: 500,
-                message: "Failed to update booking",
-                error: error.message,
-            });
-        });
-});
+    });
 
 // classesController.post("/session", (req, res) => {
 //     const sessionData = req.body;
@@ -478,25 +561,28 @@ classesController.post("/booking", (req, res) => {
 //         });
 // });
 
-classesController.delete("/booking", (req, res) => {
-    const bookingData = req.body;
+classesController.delete("/booking",
+    // auth(["Admin", "Trainer", "Member"]),
 
-    deleteBooking(bookingData)
-        .then((booking) => {
-            res.status(200).json({
-                status: 200,
-                message: "Cancelled booking",
-                booking: booking,
+    (req, res) => {
+        const bookingData = req.body;
+
+        deleteBooking(bookingData)
+            .then((booking) => {
+                res.status(200).json({
+                    status: 200,
+                    message: "Cancelled booking",
+                    booking: booking,
+                });
+            })
+            .catch((error) => {
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to cancel booking",
+                    error: error.message,
+                });
             });
-        })
-        .catch((error) => {
-            res.status(500).json({
-                status: 500,
-                message: "Failed to cancel booking",
-                error: error.message,
-            });
-        });
-});
+    });
 
 
 
@@ -548,6 +634,8 @@ const updateClassesSchema = {
 
 classesController.patch(
     "/classes",
+    // auth(["Admin", "Trainer"]),
+
     // validate({ body: patchUpdateUserSchema }),
     (req, res) => {
         // Get user data out of the request
@@ -585,6 +673,7 @@ classesController.patch(
 
 classesController.patch(
     "/session",
+    // auth(["Admin", "Trainer"]),
     // validate({ body: patchUpdateUserSchema }),
     (req, res) => {
         // Get user data out of the request
@@ -646,9 +735,11 @@ classesController.patch(
 
 
 classesController.delete("/classes/:id",
+    // auth(["Admin"]),
+
     (req, res) => {
         const classesID = req.params.id;
-        deleteByID(classesID)
+        deleteClassByID(classesID)
             .then(result => {
                 res.status(200).json({
                     status: 200,
@@ -659,6 +750,26 @@ classesController.delete("/classes/:id",
                 res.status(500).json({
                     status: 500,
                     message: "Failed to delete classes by ID"
+                })
+            })
+    })
+
+
+classesController.delete("/session/:id",
+    // auth(["Admin", "Trainer"]),
+    (req, res) => {
+        const sessionID = req.params.id;
+        deleteSessionByID(sessionID)
+            .then(result => {
+                res.status(200).json({
+                    status: 200,
+                    message: "Deleted session by ID"
+                })
+            })
+            .catch(error => {
+                res.status(500).json({
+                    status: 500,
+                    message: "Failed to delete session by ID"
                 })
             })
     })

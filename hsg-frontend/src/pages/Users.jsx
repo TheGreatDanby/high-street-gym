@@ -138,13 +138,13 @@ export default function Users() {
 
   return (
     <div className="container mx-auto grid md:grid-cols-2 grid-cols-1 gap-2 mt-10 md:mt-0">
-      <div className="overflow-x-auto   overflow-scroll ">
+      <div className="overflow-x-auto overflow-scroll row-start-2 md:row-auto ">
         <table className="table table-compact w-full ">
           <thead>
             <tr>
               <th className="hidden sticky top-0">ID</th>
               <th className="sticky top-0">First Name</th>
-              <th className="sticky top-0">Last Name</th>
+              <th className="sticky top-0 hidden md:table-cell">Last Name</th>
               <th className="sticky top-0">Email</th>
               <th className="sticky top-0 ">Edit</th>
             </tr>
@@ -170,7 +170,9 @@ export default function Users() {
                         <tr key={user.id}>
                           <td className="hidden">{user.id}</td>
                           <td>{user.firstName}</td>
-                          <td>{user.lastName}</td>
+                          <td className="hidden md:table-cell">
+                            {user.lastName}
+                          </td>
                           <td>{user.email}</td>
                           <td>
                             <button

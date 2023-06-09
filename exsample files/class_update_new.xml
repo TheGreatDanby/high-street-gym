@@ -16,7 +16,7 @@
         <class>
             <Name>Cycling</Name>
             <Description>A cardio workout on stationary bikes that simulates outdoor cycling.</Description>
-            <Duration>40</Duration>
+            <Duration>44</Duration>
             <Timeslot>2:00 PM - 2:45 PM</Timeslot>
             <Location>RideCycle - Cycling Studio</Location>
         </class>

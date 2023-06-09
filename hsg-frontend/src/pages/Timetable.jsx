@@ -13,7 +13,7 @@ function Timetable() {
 
   return (
     <div>
-      <div className="grid grid-flow-col  m-10">
+      {/* <div className="grid grid-flow-col mt-10 mb-5 md:mt-0">
         {classes.map((classObj, index) => (
           <div className="" key={`${classObj.ID}-${index}`}>
             <a href={`#${classObj.Name}`}>
@@ -23,7 +23,7 @@ function Timetable() {
             </a>
           </div>
         ))}
-      </div>
+      </div> */}
       <Classes />
     </div>
   );

@@ -2,11 +2,12 @@ import { Router } from "express";
 import bcrypt from "bcryptjs"
 import { v4 as uuid4 } from "uuid"
 import xml2js from "xml2js"
+import auth from "../middleware/auth.js";
+
 // import { validate } from "../middleware/validator.js";
 import { User } from "../models/users.js";
-import { create, deleteByID, getByAuthenticationKey, getByEmail, getByID, update, getAll, createUserXML } from "../models/users-mdb.js";
-// import auth from "../middleware/auth.js"
-// TODO: Import auth middleware once implemented
+import { create, deleteByID, getByAuthenticationKey, getByEmail, getByID, update, getAll, createUserXML, updateUserXML } from "../models/users-mdb.js";
+
 
 const userController = Router()
 // TODO: add validation (watch video: Week 2 - Project Architecture, around 40 min mark)
@@ -28,6 +29,7 @@ const postUserLoginSchema = {
 
 userController.post(
     "/users/login",
+
     // validate({ body: postUserLoginSchema }),
     (req, res) => {
         const loginData = req.body
@@ -35,15 +37,6 @@ userController.post(
         getByEmail(loginData.email)
             .then(user => {
                 if (bcrypt.compareSync(loginData.password, user.password)) {
-                    // If we make it here, that means that the user's
-                    // email and password match a user in the database.
-
-                    // The next step is to generate a unique authentication
-                    // key that will be used to authenticate the user for
-                    // the rest of this session.
-
-                    // This line generates a universally unique identifier
-                    // and stores it into this user's model
                     user.authenticationKey = uuid4().toString()
 
                     // Store the updated user back into the database
@@ -111,6 +104,7 @@ userController.post(
 //// Get user list endpoint
 userController.get(
     "/users",
+    // auth(["Admin", "Trainer", "Member"]),
     async (req, res) => {
         /*
         #swagger.parameters['authenticationKey'] = {
@@ -129,18 +123,20 @@ userController.get(
 )
 
 //// Get user by ID endpoint
-const getUserByIDSchema = {
-    type: "object",
-    required: ["id"],
-    properties: {
-        id: {
-            type: "string"
-        }
-    }
-}
+// const getUserByIDSchema = {
+//     type: "object",
+//     required: ["id"],
+//     properties: {
+//         id: {
+//             type: "string"
+//         }
+//     }
+// }
 
 userController.get(
     "/users/:id",
+    // auth(["Admin"]),
+
     // validate({ params: getUserByIDSchema }),
     (req, res) => {
         const userID = req.params.id
@@ -173,6 +169,9 @@ const getUserByAuthenticationKeySchema = {
 
 userController.get(
     "/users/by-key/:authenticationKey",
+
+    // auth(["Admin"]),
+
     // validate({ params: getUserByAuthenticationKeySchema }),
     (req, res) => {
         const userAuthKey = req.params.authenticationKey
@@ -224,7 +223,6 @@ const postCreateUserSchema = {
 userController.post(
     "/users/register",
     // [
-    // auth(["admin"]),
     // validate({ body: postCreateUserSchema }),
     // ],
     (req, res) => {
@@ -294,6 +292,7 @@ const patchUpdateUserSchema = {
 
 userController.patch(
     "/users",
+    // auth(["Admin", "Trainer"]),
     // validate({ body: patchUpdateUserSchema }),
     (req, res) => {
         // Get user data out of the request
@@ -334,7 +333,7 @@ userController.patch(
 )
 
 userController.post("/users/upload/xml",
-    // auth(["Admin", "Trainer"]),
+    // auth(["Admin"]),
     (req, res) => {
         if (req.files && req.files["xml-file"]) {
             // Access the XML file as a string
@@ -386,11 +385,16 @@ userController.post("/users/upload/xml",
                         Promise.all(usersData.map((userData) => {
                             // Convert the xml object into a model object
                             const userModel = User(
-                                userData.id.toString(),
-                                userData.name.toString()
-                            )
+                                null,
+                                userData.Email.toString(),
+                                userData.Password.toString(),
+                                userData.Role.toString(),
+                                userData.FirstName.toString(),
+                                userData.LastName.toString(),
+                                userData.AuthenticationKey ? userData.AuthenticationKey.toString() : null
+                            );
                             // Return the promise of each creation query
-                            return models.userModel.update(userModel)
+                            return updateUserXML(userModel)
                         })).then(results => {
                             res.status(200).json({
                                 status: 200,
@@ -438,6 +442,8 @@ const deleteUserByIDSchema = {
 }
 
 userController.delete("/users/:id",
+    // auth(["Admin"]),
+
     // validate({ params: deleteUserByIDSchema }),
     (req, res) => {
         const userID = req.params.id
